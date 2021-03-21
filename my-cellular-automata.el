@@ -23,28 +23,28 @@
 ;; Play cellular automata.
 ;; Puts a node at point in the feld by hitting space key.
 ;; Update the field by "u" key. C-u <numer> u to do updates <number> times at once.
-;; Set *my-ca-test-mode* to non-nil to prepopulate some nodes.
+;; Set *my-cellular-automata-test-mode* to non-nil to prepopulate some nodes.
 ;; Set *my-cellular-automata-field-size* to modify the field width and height.
 ;;
 ;;; Code:
 
 
-(defvar *my-ca-test-mode* nil
+(defvar *my-cellular-automata-test-mode* nil
   "turn on test mode")
 
-;;(setq *my-ca-test-mode* t)
+;;(setq *my-cellular-automata-test-mode* t)
 
 (defun my-cellular-automata ()
   "play cellular automata"
   (interactive)
   (my-cellular-automata-init)
-  (if *my-ca-test-mode* (my-ca-put-test-nodes))
+  (if *my-cellular-automata-test-mode* (my-cellular-automata-put-test-nodes))
   (switch-to-buffer "*my-cellular-automata*")
   (my-cellular-automata-mode)
   (my-cellular-automata-show-field)
   )
 
-(defun my-ca-put-test-nodes ()
+(defun my-cellular-automata-put-test-nodes ()
   "init for testing"
   (dolist (node-pos '((5 5) (5 6) (5 7)
 		      (6 5) (6 6) (6 7)
@@ -113,9 +113,12 @@
 
 (defun my-cellular-automata-value-in-range (value)
   "return a value in range based on the input value"
-  (min (max value 0) (1- *my-cellular-automata-field-size*))
-  )
-
+  (let ((max-value (1- *my-cellular-automata-field-size*)))
+  (cond ((> value max-value)
+	(% value max-value))
+	((< value 0) (+ max-value (% value max-value)))
+	 (t value))))
+  
 (defun my-cellular-automata-is-cell-taken (row column)
   "check if a cell is occupied.  row and column are adjusted to fit in range."
   (eq (my-cellular-automata-get-cell (my-cellular-automata-value-in-range row) (my-cellular-automata-value-in-range column)) *my-cellular-automata-node-char*)
@@ -135,10 +138,10 @@
 
 
 
-(defun my-cellular-automata-update (&optional num_repetition)
+(defun my-cellular-automata-update (&optional num-repetitions)
   "update cells"
   (interactive "p")
-  (dotimes (i num_repetition)
+  (dotimes (i num-repetitions)
     (let ((tmp-field (copy-sequence *my-cellular-automata-field*)))
       (dotimes (row *my-cellular-automata-field-size*)
 	(dotimes (column *my-cellular-automata-field-size*)
