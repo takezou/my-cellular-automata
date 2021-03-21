@@ -113,9 +113,12 @@
 
 (defun my-cellular-automata-value-in-range (value)
   "return a value in range based on the input value"
-  (min (max value 0) (1- *my-cellular-automata-field-size*))
-  )
-
+  ;;(min (max value 0) (1- *my-cellular-automata-field-size*))
+  (cond ((> value *my-cellular-automata-field-size*)
+	(% value *my-cellular-automata-field-size*))
+	((< value 0) (+ *my-cellular-automata-field-size* (% value *my-cellular-automata-field-size*))
+	 t value)))
+  
 (defun my-cellular-automata-is-cell-taken (row column)
   "check if a cell is occupied.  row and column are adjusted to fit in range."
   (eq (my-cellular-automata-get-cell (my-cellular-automata-value-in-range row) (my-cellular-automata-value-in-range column)) *my-cellular-automata-node-char*)
