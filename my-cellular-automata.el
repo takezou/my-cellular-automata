@@ -98,18 +98,22 @@
   "put a node at current point"
   (interactive)
   (my-cellular-automata-set-cell (1- (line-number-at-pos)) (current-column) *my-cellular-automata-node-char*)
-  (my-cellular-automata-show-field)
-  )
+  (let ((p (point)))
+    (my-cellular-automata-show-field)
+    (goto-char p)
+  ))
 
 (defun my-cellular-automata-show-field ()
   "show the current CA field"
   ;; todo ;; save current-pos
-  (let ((inhibit-read-only t))
+  (let ((inhibit-read-only t) (p (point)))
     (erase-buffer)
     (dotimes (row *my-cellular-automata-field-size*)
       (dotimes (column *my-cellular-automata-field-size*)
 	(insert (my-cellular-automata-get-cell row column)))
-      (insert "\n"))))
+      (insert "\n"))
+    (goto-char p)
+    ))
 
 (defun my-cellular-automata-value-in-range (value)
   "return a value in range based on the input value"
@@ -135,7 +139,6 @@
 			    1
 			  0)))
 	     )) (and (< c 5) (> c 1)))))
-
 
 
 (defun my-cellular-automata-update (&optional num-repetitions)
