@@ -28,18 +28,26 @@
 ;;
 ;;; Code:
 
+;; evaluate to test overriding defaults:
+;; (setq *my-cellular-automata-test-mode* t)
+;; (setq *my-cellular-automata-node-char* ?\🐯)
+;; (setq *my-cellular-automata-blank-char* ?\🌀)
 
 (defvar *my-cellular-automata-test-mode* nil
-  "turn on test mode")
+  "set non-nil to turn on test mode")
 
-;;(setq *my-cellular-automata-test-mode* t)
+(defvar *my-cellular-automata-buffer-name* "*my-cellular-automata*"
+  "buffer name")
+
+(defvar *my-cellular-automata-timer* nil
+  "timer for periodical update")
 
 (defun my-cellular-automata ()
   "play cellular automata"
   (interactive)
   (my-cellular-automata-init)
   (if *my-cellular-automata-test-mode* (my-cellular-automata-put-test-nodes))
-  (switch-to-buffer "*my-cellular-automata*")
+  (switch-to-buffer *my-cellular-automata-buffer-name*)
   (my-cellular-automata-mode)
   (my-cellular-automata-show-field)
   )
@@ -58,12 +66,15 @@
 (define-key my-cellular-automata-mode-map (kbd "SPC") 'my-cellular-automata-place-node)
 
 (define-key my-cellular-automata-mode-map (kbd "u") 'my-cellular-automata-update)
+(define-key my-cellular-automata-mode-map (kbd "s") 'my-cellular-automata-start-auto-update)
+(define-key my-cellular-automata-mode-map (kbd "c") 'my-cellular-automata-cancel-auto-update)
 
 (define-derived-mode my-cellular-automata-mode special-mode
   "my cellular automata mode"
   "a mode for playing cellular automata"
   )
 
+(add-hook 'quit-window-hook 'my-cellular-automata-cancel-auto-update)
 (defvar *my-cellular-automata-field* nil
   "cellular automata field")
 
@@ -73,11 +84,16 @@
 (defvar *my-cellular-automata-node-char* ?\@
   "a character which represents a node")
 
+(defvar *my-cellular-automata-blank-char* ?\.
+  "a character which represents a blank cell")
+
 (defun my-cellular-automata-init ()
   "init the cellular automata field"
   (setq
    *my-cellular-automata-field-size* 20
-   *my-cellular-automata-field* (make-vector (* *my-cellular-automata-field-size* *my-cellular-automata-field-size*) ?\.))
+   *my-cellular-automata-field* (make-vector (* *my-cellular-automata-field-size* *my-cellular-automata-field-size*) *my-cellular-automata-blank-char*))
+  (if *my-cellular-automata-timer*
+      (my-cellular-automata-cancel-auto-update))
   )
 
 (defun my-cellular-automata-get-cell (row column)
@@ -94,10 +110,12 @@
 	)
   )
 
-(defun my-cellular-automata-place-node  ()
+(defun my-cellular-automata-place-node ()
   "put a node at current point"
   (interactive)
-  (my-cellular-automata-set-cell (1- (line-number-at-pos)) (current-column) *my-cellular-automata-node-char*)
+  (let ((cwidth (string-width (format "%c" *my-cellular-automata-node-char*))))
+    (my-cellular-automata-set-cell (1- (line-number-at-pos)) (/ (current-column) cwidth) *my-cellular-automata-node-char*)
+    )
   (let ((p (point)))
     (my-cellular-automata-show-field)
     (goto-char p)
@@ -105,15 +123,17 @@
 
 (defun my-cellular-automata-show-field ()
   "show the current CA field"
-  ;; todo ;; save current-pos
-  (let ((inhibit-read-only t) (p (point)))
-    (erase-buffer)
-    (dotimes (row *my-cellular-automata-field-size*)
-      (dotimes (column *my-cellular-automata-field-size*)
-	(insert (my-cellular-automata-get-cell row column)))
-      (insert "\n"))
-    (goto-char p)
-    ))
+  (with-current-buffer *my-cellular-automata-buffer-name*
+    (let ((inhibit-read-only t) (p (point)))
+      (erase-buffer)
+      (dotimes (row *my-cellular-automata-field-size*)
+	(dotimes (column *my-cellular-automata-field-size*)
+	  (insert (my-cellular-automata-get-cell row column)))
+	(insert "\n"))
+      (goto-char p)
+      (highlight-regexp (format "%c" *my-cellular-automata-node-char*) 'hi-blue)
+      (font-lock-fontify-buffer)
+      )))
 
 (defun my-cellular-automata-value-in-range (value)
   "return a value in range based on the input value"
@@ -140,7 +160,6 @@
 			  0)))
 	     )) (and (< c 5) (> c 1)))))
 
-
 (defun my-cellular-automata-update (&optional num-repetitions)
   "update cells"
   (interactive "p")
@@ -152,11 +171,26 @@
 		(+ column (* row *my-cellular-automata-field-size*))
 		(if (my-cellular-automata-is-alive-in-next-turn row column)
 		    *my-cellular-automata-node-char*
-		  ?\.
+		  *my-cellular-automata-blank-char*
 		  ))))
       (setq *my-cellular-automata-field* (copy-sequence tmp-field))
       )
     (my-cellular-automata-show-field)))
+
+(defun my-cellular-automata-start-auto-update ()
+  "start updating automatically"
+  (interactive)
+  (if (not *my-cellular-automata-timer*)
+      (setq *my-cellular-automata-timer* (run-with-timer 1 1 'my-cellular-automata-update 1))) nil)
+
+(defun my-cellular-automata-cancel-auto-update ()
+  "cancel updating automatically"
+  (interactive)
+  (if *my-cellular-automata-timer*
+      (progn
+	(cancel-timer *my-cellular-automata-timer*)
+	(setq *my-cellular-automata-timer* nil)
+	)))
 
 (provide 'my-cellular-automata)
 ;;; my-cellular-automata.el ends here
